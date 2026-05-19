@@ -1,0 +1,226 @@
+using StructuralPatternsDemo;
+using System;
+using System.Collections.Generic;
+
+namespace StructuralPatternsDemo
+{
+    // 1. ADAPTER
+    public interface IHumanRadar { void ScanArea(); }
+
+    public class StandardRadar : IHumanRadar
+    {
+        public void ScanArea() => Console.WriteLine("[Adapter] Людський радар: Сканування сектору...");
+    }
+
+    public class AlienSensor
+    {
+        public void AlienPing() => Console.WriteLine("[Adapter] AlienSensor: #$@*&% PING! (Знайдено ворога)");
+    }
+
+    public class AlienSensorAdapter : IHumanRadar
+    {
+        private readonly AlienSensor _alienSensor;
+        public AlienSensorAdapter(AlienSensor sensor) { _alienSensor = sensor; }
+        public void ScanArea() { _alienSensor.AlienPing(); }
+    }
+
+    // 2. BRIDGE
+    public interface IWeaponSystem { void Fire(); }
+    public class LaserCannon : IWeaponSystem { public void Fire() => Console.WriteLine("Пiу-пiу! (Лазер)"); }
+    public class MissileLauncher : IWeaponSystem { public void Fire() => Console.WriteLine("Вжух-бум! (Ракета)"); }
+
+    public abstract class WeaponControl
+    {
+        protected IWeaponSystem _weapon;
+        protected WeaponControl(IWeaponSystem weapon) { _weapon = weapon; }
+        public abstract void Engage();
+    }
+
+    public class AutoTargetingControl : WeaponControl
+    {
+        public AutoTargetingControl(IWeaponSystem weapon) : base(weapon) { }
+        public override void Engage()
+        {
+            Console.Write("[Bridge] Авто-наведення: Захоплення цiлi... ");
+            _weapon.Fire();
+        }
+    }
+
+    // 3. COMPOSITE
+    public interface IUnit { void Move(int x, int y); }
+
+    public class SingleShip : IUnit
+    {
+        private string _name;
+        public SingleShip(string name) { _name = name; }
+        public void Move(int x, int y) => Console.WriteLine($"[Composite] Корабель {_name} летить у координати {x}:{y}");
+    }
+
+    public class Fleet : IUnit
+    {
+        private List<IUnit> _units = new List<IUnit>();
+        public void Add(IUnit unit) => _units.Add(unit);
+
+        public void Move(int x, int y)
+        {
+            Console.WriteLine($"[Composite]  Флот починає рух у {x}:{y} ");
+            foreach (var unit in _units) unit.Move(x, y);
+        }
+    }
+
+    // 4. DECORATOR
+    public interface IMarine { void Report(); }
+    public class BasicMarine : IMarine { public void Report() => Console.Write("Морпiх готовий "); }
+
+    public abstract class MarineDecorator : IMarine
+    {
+        protected IMarine _marine;
+        public MarineDecorator(IMarine marine) { _marine = marine; }
+        public virtual void Report() => _marine.Report();
+    }
+
+    public class JetpackUpgrade : MarineDecorator
+    {
+        public JetpackUpgrade(IMarine marine) : base(marine) { }
+        public override void Report()
+        {
+            base.Report();
+            Console.Write("Джетпак заправлено ");
+        }
+    }
+
+    public class ArmorUpgrade : MarineDecorator
+    {
+        public ArmorUpgrade(IMarine marine) : base(marine) { }
+        public override void Report()
+        {
+            base.Report();
+            Console.Write("Важка броня одягнена ");
+        }
+    }
+
+    // 5. FACADE
+    class ShieldSystem { public void Activate() => Console.WriteLine("Щити на 100%"); }
+    class AlarmSystem { public void SirenOn() => Console.WriteLine("УВАГА! ЧЕРВОНА ТРИВОГА"); }
+    class TurretSystem { public void Deploy() => Console.WriteLine("Турелi пiднято на поверхню"); }
+
+    public class BaseDefenseFacade
+    {
+        private ShieldSystem _shields = new ShieldSystem();
+        private AlarmSystem _alarm = new AlarmSystem();
+        private TurretSystem _turrets = new TurretSystem();
+
+        public void ActivateRedAlert()
+        {
+            Console.WriteLine("[Facade] Iнiцiалiзацiя протоколу захисту бази...");
+            _alarm.SirenOn();
+            _shields.Activate();
+            _turrets.Deploy();
+        }
+    }
+
+    // 6. FLYWEIGHT
+    public class ParticleVisual
+    {
+        public string Color { get; }
+        public string Texture { get; }
+        public ParticleVisual(string color, string texture) { Color = color; Texture = texture; }
+    }
+
+    public class ParticleFactory
+    {
+        private Dictionary<string, ParticleVisual> _cache = new Dictionary<string, ParticleVisual>();
+        public ParticleVisual GetVisual(string color, string texture)
+        {
+            string key = color + texture;
+            if (!_cache.ContainsKey(key))
+            {
+                Console.WriteLine($"[Flyweight] Створення нової текстури: {key}");
+                _cache[key] = new ParticleVisual(color, texture);
+            }
+            return _cache[key];
+        }
+    }
+
+    // 7. PROXY
+    public interface IOrbitalStrike { void Fire(); }
+
+    public class RealOrbitalStrike : IOrbitalStrike
+    {
+        public void Fire() => Console.WriteLine("[Proxy] БУУУУМ! Орбiтальний удар успiшний! Ворога знищено.");
+    }
+
+    public class OrbitalStrikeProxy : IOrbitalStrike
+    {
+        private RealOrbitalStrike _realStrike;
+        private int _playerEnergy;
+
+        public OrbitalStrikeProxy(int energy) { _playerEnergy = energy; }
+
+        public void Fire()
+        {
+            if (_playerEnergy >= 1000)
+            {
+                if (_realStrike == null) _realStrike = new RealOrbitalStrike();
+                _realStrike.Fire();
+                _playerEnergy -= 1000;
+            }
+            else
+            {
+                Console.WriteLine($"[Proxy] Помилка: Недостатньо енергiї для орбiтального удару (Потрiбно 1000, є {_playerEnergy}).");
+            }
+        }
+    }
+    class Program
+    {
+        static void Main()
+        {
+            // Adapter
+            IHumanRadar standard = new StandardRadar();
+            standard.ScanArea();
+
+            AlienSensor capturedSensor = new AlienSensor();
+            IHumanRadar adaptedSensor = new AlienSensorAdapter(capturedSensor);
+            adaptedSensor.ScanArea();
+
+            // Bridge
+            WeaponControl autoLaser = new AutoTargetingControl(new LaserCannon());
+            autoLaser.Engage();
+
+            // Composite
+            SingleShip fighter1 = new SingleShip("Винищувач-1");
+            SingleShip fighter2 = new SingleShip("Винищувач-2");
+            Fleet alphaSquad = new Fleet();
+            alphaSquad.Add(fighter1);
+            alphaSquad.Add(fighter2);
+
+            Fleet mainArmada = new Fleet();
+            mainArmada.Add(alphaSquad);
+            mainArmada.Add(new SingleShip("Дредноут"));
+            mainArmada.Move(150, 300);
+
+            // Decorator
+            IMarine superMarine = new BasicMarine();
+            superMarine = new ArmorUpgrade(superMarine);
+            superMarine = new JetpackUpgrade(superMarine);
+            superMarine.Report();
+            Console.WriteLine();
+
+            // Facade
+            BaseDefenseFacade baseDefense = new BaseDefenseFacade();
+            baseDefense.ActivateRedAlert();
+
+            // Flyweight
+            ParticleFactory pFactory = new ParticleFactory();
+            ParticleVisual beam1 = pFactory.GetVisual("Червоний", "Laser.png");
+            ParticleVisual beam2 = pFactory.GetVisual("Червоний", "Laser.png");
+
+            // Proxy
+            IOrbitalStrike strikeAttempt1 = new OrbitalStrikeProxy(500);
+            strikeAttempt1.Fire();
+
+            IOrbitalStrike strikeAttempt2 = new OrbitalStrikeProxy(1200);
+            strikeAttempt2.Fire();            
+        }
+    }
+}
